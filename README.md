@@ -1,6 +1,6 @@
 # 3D Vision Mamba for Lung Nodule Segmentation
 
-A volumetric segmentation system for the LIDC-IDRI dataset using a state-of-the-art 3D Vision Mamba architecture.
+A volumetric segmentation system for the LIDC-IDRI dataset using a 'pretty novel' 3D Vision Mamba architecture.
 
 ## Project Structure
 

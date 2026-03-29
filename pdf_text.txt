@@ -1,0 +1,53 @@
+Lung Nodule 
+Segmentation 
+using Vision 
+Mamba
+Uday Yerraballi-EC23B1007
+Chris Jason Baskar-CS23B1012
+Overview
+Lung cancer is one of the leading causes of cancer related deaths worldwide.
+Early detection of lung nodules in CT scans improves survival ratessignificantly.
+• Challenges include:
+• Lung nodules are very small and irregular
+• Nodules resemble surrounding blood vessels and tissues
+• Manual annotation by radiologists is time consuming
+Deep learning segmentation models help automatically detect suspicious regions
+Dataset information
+• LIDC-IDRI (Lung Image Database Consortium)
+• Public dataset of thoracic CT scans
+• Contains more than 1000 patient scans
+• Annotated by four expert radiologists
+• Provides labeled lung nodules and segmentation masks
+• It is widely used as a benchmark dataset for lung nodule detection
+• research.
+
+Citations/Literature Survey
+• https://www.sciencedirect.com/science/article/pii/S2667099226000095
+• https://arxiv.org/abs/2401.09417
+
+Architecture
+
+Why do we use Vision Mamba for lung nodule 
+segmentation?
+• Said to be one of the best alternatives to transformers in image tasks 
+(segmentation,object detection and classification)
+• Much more memory efficient with respect to VIT as it memory complexity is linear as 
+opposed to transformers which have an quadratic memory complexity.
+• Beats Deit by MetaAI on popular datasets such as CoCo object detection and 
+ImageNet classification.
+• Uses a bidrectional state space model which gives us the global context without need 
+of self-attention,giving us best of both the worlds!(beats CNN in global 
+context,Transformers in computational effeciency)
+Novelty in Approach
+Mamba+UNet models has been used in 2026 for tasks like lung nodule segmentation on 
+LIDC-IDRI data, as seen in recent papers.
+Our Simpler yet Novel Approach !!
+We use a method:
+• Add noise to CT scan images.
+• Gradually remove noise through diffusion steps.
+• Let pure Mamba guide the cleanup for clear nodule shapes.
+• Get the final segmentation mask.
+Why It's Better
+No need for Unet as this approach is lighter, handles tricky nodule shapes via diffusion model, 
+and memory efficient.
+

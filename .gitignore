@@ -1,2 +1,9 @@
-*.md
-!README.md
+__pycache__/
+*.pyc
+.pytest_cache/
+/data/
+/runs/
+*.pt
+*.pth
+*.npz
+.ipynb_checkpoints/

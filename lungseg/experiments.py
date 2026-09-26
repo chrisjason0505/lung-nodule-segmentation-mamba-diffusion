@@ -112,6 +112,9 @@ def main(argv=None):
     ap.add_argument("--pretrain_steps", type=int, default=6000)
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--aggregate_only", action="store_true")
+    ap.add_argument("--configs", nargs="+", default=None, help="subset of the preset's config names")
+    ap.add_argument("--deadline", type=float, default=0,
+                    help="unix time by which everything must be finished; each run gets an equal share")
     ap.add_argument("--extra", default="", help="extra args passed to train/pretrain, e.g. '--widths 24 48 96 192 256'")
     args = ap.parse_args(argv)
     os.makedirs(args.runs, exist_ok=True)
@@ -121,13 +124,29 @@ def main(argv=None):
 
     from lungseg import pretrain, train
     extra = args.extra.split() if args.extra else []
+    import time
     configs = PRESETS[args.preset]
-    for arch in sorted({a for _, a, pre in configs if pre}):
+    if args.configs:
+        configs = [c for c in configs if c[0] in args.configs]
+    todo = [(n, a, p, f, s) for f in args.fractions for s in args.seeds for n, a, p in configs
+            if not os.path.exists(os.path.join(run_dir(args.runs, n, f, s), "results.json"))]
+    pre_todo = [a for a in sorted({a for _, a, pre in configs if pre})
+                if not os.path.exists(os.path.join(args.runs, f"pretrain_{a}", "pretrain.pt"))]
+    n_left = [len(todo) + len(pre_todo)]
+
+    def budget():
+        if not args.deadline:
+            return []
+        mins = max((args.deadline - time.time()) / 60 - 5, 5) / max(n_left[0], 1)
+        n_left[0] -= 1
+        return ["--max_minutes", f"{mins:.1f}"]
+
+    for arch in pre_todo:
         out = os.path.join(args.runs, f"pretrain_{arch}")
-        if not os.path.exists(os.path.join(out, "pretrain.pt")):
+        if True:
             print(f"\n=== denoising pretraining: {arch} ===", flush=True)
             pretrain.main(["--data", args.data, "--out", out, "--arch", arch, "--steps", str(args.pretrain_steps),
-                           "--batch", str(args.batch)] + extra)
+                           "--batch", str(args.batch)] + extra + budget())
             gc.collect(); torch.cuda.empty_cache()
     for frac in args.fractions:
         for seed in args.seeds:
@@ -138,7 +157,7 @@ def main(argv=None):
                     continue
                 print(f"\n=== {name}  fraction {frac}  seed {seed} ===", flush=True)
                 argv_t = ["--data", args.data, "--out", out, "--arch", arch, "--fraction", str(frac),
-                          "--seed", str(seed), "--steps", str(args.steps), "--batch", str(args.batch)] + extra
+                          "--seed", str(seed), "--steps", str(args.steps), "--batch", str(args.batch)] + extra + budget()
                 if pre:
                     argv_t += ["--init", os.path.join(args.runs, f"pretrain_{arch}", "pretrain.pt")]
                 res = train.main(argv_t)

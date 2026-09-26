@@ -85,3 +85,14 @@ def load_state(model, path, skip_heads=False, strict=True):
         strict = False
     missing, unexpected = model.load_state_dict(sd, strict=strict)
     return ck, missing, unexpected
+
+
+def fit_steps_to_budget(step, elapsed_s, steps, max_minutes, reserve=0.12):
+    """Shrink the total number of steps so training ends within the budget
+    (with ``reserve`` of it left for validation / testing)."""
+    rate = elapsed_s / max(step, 1)
+    fit = int((max_minutes * 60 * (1 - reserve)) / rate)
+    new = max(min(steps, fit), step + 1)
+    print(f"[budget] {rate:.2f} s/step -> {'keeping' if new == steps else 'reducing to'} {new} steps "
+          f"to fit {max_minutes:.0f} min", flush=True)
+    return new

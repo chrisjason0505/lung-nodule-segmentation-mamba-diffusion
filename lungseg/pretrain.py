@@ -30,7 +30,7 @@ import torch.nn.functional as F
 from lungseg.data.dataset import UnlabeledSet, normalize_hu, random_affine_views, read_splits
 from lungseg.models.mamba_unet import build_model, count_parameters
 from lungseg.models.ssm import backend_name
-from lungseg.utils import cosine_lr, get_device, save_json, seed_everything
+from lungseg.utils import fit_steps_to_budget, cosine_lr, get_device, save_json, seed_everything
 
 
 def main(argv=None):
@@ -48,6 +48,8 @@ def main(argv=None):
     ap.add_argument("--alpha_min", type=float, default=0.3, help="min signal level sqrt(a)^2")
     ap.add_argument("--alpha_max", type=float, default=0.95)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--max_minutes", type=float, default=0,
+                    help="wall-clock budget; the step count (and LR schedule) shrinks to fit it")
     ap.add_argument("--no_amp", action="store_true")
     ap.add_argument("--checkpointing", default="auto", choices=["auto", "on", "off"])
     ap.add_argument("--device", default="auto")
@@ -75,7 +77,11 @@ def main(argv=None):
     gen = torch.Generator().manual_seed(args.seed)
     rng = np.random.default_rng(args.seed)
     hist, t0, run = [], time.time(), 0.0
-    for step in range(args.steps):
+    step = -1
+    while step + 1 < args.steps:
+        step += 1
+        if args.max_minutes and step == 60:
+            args.steps = fit_steps_to_budget(step, time.time() - t0, args.steps, args.max_minutes)
         model.train()
         for g in opt.param_groups:
             g["lr"] = cosine_lr(step, args.steps, args.lr, 250)

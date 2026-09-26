@@ -22,7 +22,7 @@ from lungseg.evaluate import evaluate_set, full_report, write_rows
 from lungseg.metrics import deep_supervised_loss, summarize
 from lungseg.models.mamba_unet import build_model, count_parameters
 from lungseg.models.ssm import backend_name
-from lungseg.utils import EMA, cosine_lr, get_device, load_state, save_json, seed_everything
+from lungseg.utils import fit_steps_to_budget, EMA, cosine_lr, get_device, load_state, save_json, seed_everything
 
 
 def parse_args(argv=None):
@@ -44,6 +44,8 @@ def parse_args(argv=None):
     ap.add_argument("--val_every", type=int, default=250)
     ap.add_argument("--ema", type=float, default=0.998)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--max_minutes", type=float, default=0,
+                    help="wall-clock budget; the step count (and LR schedule) shrinks to fit it")
     ap.add_argument("--split_seed", type=int, default=0, help="seed of the nested patient subsets")
     ap.add_argument("--no_amp", action="store_true")
     ap.add_argument("--checkpointing", default="auto", choices=["auto", "on", "off"],
@@ -83,7 +85,11 @@ def main(argv=None):
     config = dict(vars(args), n_params=n_params, n_train=len(train), n_train_patients=len(train.patients))
 
     best, hist, t0 = -1.0, [], time.time()
-    for step in range(args.steps):
+    step = -1
+    while step + 1 < args.steps:
+        step += 1
+        if args.max_minutes and step == 60:
+            args.steps = fit_steps_to_budget(step, time.time() - t0, args.steps, args.max_minutes)
         model.train()
         for g in opt.param_groups:
             g["lr"] = cosine_lr(step, args.steps, args.lr, args.warmup)

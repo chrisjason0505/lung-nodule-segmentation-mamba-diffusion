@@ -110,13 +110,14 @@ def main(argv=None):
             hist.append(dict(step=step + 1, loss=loss.item(), val_dice=s["dice"], val_iou=s["iou"],
                              time_s=time.time() - t0))
             flag = ""
+            mem = (f"  mem {torch.cuda.max_memory_allocated() / 2**30:.1f}GB" if dev.type == "cuda" else "")
             if s["dice"] > best:
                 best = s["dice"]
                 torch.save({"model": ema.model.state_dict(), "config": config, "step": step + 1,
                             "val_dice": best}, os.path.join(args.out, "best.pt"))
                 flag = " *"
             print(f"step {step + 1:6d}  loss {loss.item():.4f}  val Dice {s['dice']:.4f}  IoU {s['iou']:.4f}  "
-                  f"lr {opt.param_groups[0]['lr']:.2e}  {time.time() - t0:.0f}s{flag}", flush=True)
+                  f"lr {opt.param_groups[0]['lr']:.2e}  {time.time() - t0:.0f}s{mem}{flag}", flush=True)
             save_json(hist, os.path.join(args.out, "history.json"))
 
     torch.save({"model": ema.model.state_dict(), "config": config, "step": args.steps},

@@ -131,9 +131,10 @@ def process_scan(scan_id: int, series_dir: str, out_dir: str, size: int, spacing
 
         image, readers = resample_cube(series, slice_z, ps, center, size, spacing, masks)
         readers_bin = (readers >= 0.5).astype(np.uint8)
-        consensus = (readers.mean(0) >= 0.5).astype(np.uint8)
+        # vote on each reader's resampled binary mask, exactly like pylidc.utils.consensus(clevel=0.5)
+        consensus = (readers_bin.mean(0) >= 0.5).astype(np.uint8)
         if consensus.sum() == 0:  # extremely small nodule vanished after resampling
-            consensus = (readers.max(0) >= 0.5).astype(np.uint8)
+            consensus = (readers.max(0) >= 0.25).astype(np.uint8)
         fname = f"{scan.patient_id}_s{scan.id:04d}_n{ni:02d}.npz"
         np.savez_compressed(os.path.join(out_dir, "labeled", fname),
                             image=np.clip(np.round(image), -1024, 3071).astype(np.int16),

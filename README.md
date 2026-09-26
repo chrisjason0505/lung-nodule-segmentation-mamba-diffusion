@@ -58,13 +58,23 @@ instead of by patient (which leaks data).
   (10% ⊂ 25% ⊂ 50% ⊂ 100%).
 * Pretraining uses images only: all training patients plus random lung cubes from
   patients without qualifying nodules. **Val/test patients are never used.**
+* **Preprocessing QA** (`python -m lungseg.qa`). It re-creates the official
+  [pylidc consensus tutorial](https://pylidc.github.io/tuts/consensus.html) figure
+  (LIDC-IDRI-0078, 4 readers + 50% consensus) from the raw DICOM, puts our
+  resampled cube of the same nodule next to it, and writes a grid of random
+  crops. For random nodules it also checks the consensus volume and mean HU
+  against pylidc's native-resolution volume. The consensus volume should match
+  to within a few percent. The mean HU inside the mask comes out a little lower
+  because of partial-volume smoothing at the boundary.
 * Task definition: segmentation of a *given* nodule (the crop centre is known).
   This is the standard LIDC segmentation benchmark setting. It is not detection.
 
 ## Quick start (Kaggle, free GPU)
 
 Open `notebooks/kaggle_lidc_mamba.ipynb` on Kaggle. Turn on GPU and internet, add
-the dataset `justinkirby/the-cancer-imaging-archive-lidcidri`, and *Run all*. By hand:
+the dataset `washingtongold/lidcidri30` (original TCIA DICOM folders for about a third of
+LIDC-IDRI, 41 GB), and *Run all*. `justinkirby/the-cancer-imaging-archive-lidcidri`
+contains only the XML annotations, no images. By hand:
 
 ```bash
 pip install -r requirements.txt

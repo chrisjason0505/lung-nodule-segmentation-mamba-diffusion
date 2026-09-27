@@ -135,10 +135,6 @@ python -m lungseg.train    --data data/lidc_crops --out runs/my_run --arch mamba
                            --init runs/pretrain_mamba/pretrain.pt
 ```
 
-No DICOM yet? `python -m lungseg.data.download_tcia --out LIDC-IDRI --n_patients 300`
-pulls the annotated CT series straight from TCIA's public API. Try it on
-Colab: it could not be tested from the machine this was written on.
-
 CPU-only smoke test with synthetic data (no LIDC dataset needed):
 
 ```bash

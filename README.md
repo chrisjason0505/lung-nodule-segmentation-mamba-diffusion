@@ -1,11 +1,11 @@
 # Label-efficient lung nodule segmentation with a 3D Mamba-UNet and diffusion pretraining
 
 3D segmentation of lung nodules on **LIDC-IDRI**, built to work well when only a
-small number of scans have labels. The pieces:
+small number of scans have labels, i.e to get good results with limited data. The pieces:
 
 * **3D Mamba-UNet.** Residual conv encoder/decoder, with tri-directional Mamba (S6
   selective state-space) layers at the 16³, 8³ and 4³ stages. The Mamba layers give
-  global context in linear time.
+  global context in linear time. 
 * **Diffusion-denoising pretraining (DDeP).** The whole network, decoder included,
   is first trained as a DDPM-style noise predictor on *unlabelled* CT cubes, then
   fine-tuned on the few labelled ones. This is where the diffusion idea of the
@@ -33,6 +33,8 @@ numbers below are on the same 238 held-out test nodules. Each model trained for
 | Mamba-UNet (scratch) | 0.779 (0.658) | 0.791 (0.672) | 0.798 (0.679) | 0.807 (0.689) |
 | **Mamba-UNet + diffusion pretraining** | **0.788** (**0.666**) | **0.794** (**0.676**) | **0.806** (**0.688**) | 0.807 (**0.690**) |
 | Radiologists, leave-one-out (same nodules) | 0.759 (0.629) | | | |
+
+As of now the Iou scores are still very average in nature and need improvement which we are working on and based on my understanding its pretty proportional to the other metric which happens to be DICE.
 
 ![label efficiency](docs/results/data_efficiency.png)
 
@@ -137,14 +139,14 @@ No DICOM yet? `python -m lungseg.data.download_tcia --out LIDC-IDRI --n_patients
 pulls the annotated CT series straight from TCIA's public API. Try it on
 Colab: it could not be tested from the machine this was written on.
 
-CPU-only smoke test with synthetic data (no LIDC needed):
+CPU-only smoke test with synthetic data (no LIDC dataset needed):
 
 ```bash
 python -m lungseg.data.synthetic --out data/synthetic --n_patients 30
 python -m lungseg.train --data data/synthetic --out runs/syn --steps 300 --crop 48 --widths 16 32 64 64 96
 ```
 
-## Repository layout
+## Repository layout overview
 
 ```
 lungseg/

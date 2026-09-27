@@ -17,32 +17,69 @@ small number of scans have labels. The pieces:
   Dice/IoU, so the model is compared against how much the four LIDC radiologists
   agree with each other.
 
-> **Status:** the code is complete and tested (unit tests plus an end-to-end
-> synthetic run), but **no LIDC numbers are reported yet**: they come from
-> running the Kaggle notebook. Nothing in this README is a made-up result.
-> Fill in the table below from `runs/summary.md`.
+## Results (Kaggle, 2 x T4, run of 2026-09-27)
 
-## Results
+Data: `washingtongold/lidcidri30` (TCIA LIDC-IDRI DICOM, patients 0001-0600). This
+gives **1,166 nodules from 489 patients** annotated by at least 2 radiologists,
+split **by patient** into 342 train / 49 val / **98 test (238 nodules)**. All
+numbers below are on the same 238 held-out test nodules. Each model trained for
+5,000 steps (batch 8, one seed), with flip-TTA at test time.
 
-| config | 10% labels | 25% | 50% | 100% |
+**Test Dice (IoU in brackets)** against the 50% radiologist consensus:
+
+| labelled training patients | 10% (34 pts, 79 nodules) | 25% (86 pts, 215) | 50% (171 pts, 402) | 100% (342 pts, 814) |
 |---|---|---|---|---|
-| Residual 3D UNet (scratch) | – | – | – | – |
-| Mamba-UNet (scratch) | – | – | – | – |
-| **Mamba-UNet + diffusion pretraining** | – | – | – | – |
-| Radiologists (leave-one-out) | – | | | |
+| Residual 3D UNet | 0.783 (0.663) | 0.794 (0.673) | 0.802 (0.682) | **0.809** (0.690) |
+| Mamba-UNet (scratch) | 0.779 (0.658) | 0.791 (0.672) | 0.798 (0.679) | 0.807 (0.689) |
+| **Mamba-UNet + diffusion pretraining** | **0.788** (**0.666**) | **0.794** (**0.676**) | **0.806** (**0.688**) | 0.807 (**0.690**) |
+| Radiologists, leave-one-out (same nodules) | 0.759 (0.629) | | | |
 
-Metric: per-nodule 3D Dice against the 50% consensus mask (test patients only),
-flip-TTA, and central connected component kept. IoU, precision, recall, HD95 and
-per-size breakdowns are in `runs/*/results.json`.
+![label efficiency](docs/results/data_efficiency.png)
 
-**What to expect.** Crop-based methods in the LIDC literature mostly report
-Dice ≈ 0.80–0.87 on consensus masks, and the four LIDC radiologists agree with
-each other at about the same level. **IoU is always lower than Dice for the same
-masks** (IoU = D / (2 − D)): Dice 0.85 is IoU 0.74, and IoU 0.80 needs Dice 0.89.
-So Dice > 0.8 is a realistic target here, while IoU > 0.8 would be above what
-LIDC's own annotators achieve between themselves. Papers with much higher
-numbers usually evaluate on 2D slices, pick easy nodules, or split by slice
-instead of by patient (which leaks data).
+Test Dice by nodule diameter, Mamba-UNet + diffusion pretraining at 100% labels:
+<6 mm 0.727 (n=24), 6-10 mm 0.799 (n=128), 10-20 mm 0.837 (n=59), ≥20 mm 0.855 (n=27).
+On nodules marked by ≥3 radiologists the Dice is 0.840 (n=169). HD95 is 1.29 mm.
+
+What these numbers do and don't show:
+
+* **Every model beats the radiologists' own agreement.** On the same nodules, a
+  single radiologist vs the consensus of the others scores Dice 0.759. All models
+  score 0.78-0.81, even with 34 labelled patients.
+* **The model is data-efficient.** With 10% of the labels (79 nodules), Dice is
+  only 0.02-0.03 below the 100% models.
+* **Diffusion pretraining helps a little at low label counts.** It is the best
+  config at 10%, 25% and 50% labels (+0.8 Dice points over Mamba-UNet from
+  scratch at 10% and 50%). With 100% labels it makes no difference.
+* **The Mamba layers alone do not beat a matched CNN.** Mamba-UNet from scratch
+  is 0.2-0.4 points below the residual UNet. Pretraining is what closes the gap.
+* **These differences are small, from a single seed and one split.** Per-nodule
+  Dice has std ≈ 0.12, so gaps under ~1 point should not be read as significant
+  until `--seeds 0 1 2` is run. What is solid is the absolute level (Dice ≈ 0.80,
+  above inter-radiologist agreement) and how flat the curve is as labels drop.
+* **IoU is ≈ 0.69, not 0.8.** For the same masks IoU is always lower than Dice.
+  An IoU of 0.8 would need Dice ≈ 0.89, far above what LIDC's own radiologists
+  agree on (IoU 0.63).
+
+Test predictions (green = consensus, red = model), smallest to largest nodule:
+
+![predictions](docs/results/predictions.png)
+
+### Preprocessing check against pylidc
+
+Left: the official [pylidc consensus tutorial](https://pylidc.github.io/tuts/consensus.html)
+figure, re-created from the raw DICOM on Kaggle (LIDC-IDRI-0078, nodule 0,
+4 readers + 50% consensus). Right: our resampled 0.8 mm cube of the same nodule
+at the same z. It is the same juxta-pleural nodule with the same reader contours
+(including reader 3's spur towards the pleura) as the figure on the pylidc site.
+
+![pylidc check](docs/results/pylidc_tutorial_0078.png)
+
+On 60 random nodules, our consensus volume divided by pylidc's native-resolution
+consensus volume is median **0.977** (5th-95th percentile 0.87-1.04). Mean HU
+inside the mask is 28 HU lower, the expected partial-volume effect of resampling
+3 mm slices. A random sample of preprocessed crops with every reader's contour:
+
+![crops](docs/results/crop_grid.png)
 
 ## Data protocol
 
